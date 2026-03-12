@@ -16,7 +16,44 @@ const DISPLAY_INNER_RADIUS = 12;
 const DISPLAY_SLIT_WIDTH = 4.2;
 const DISPLAY_RETURN_WIDTH_DEG = 3.4;
 const AXON_VIEW_SIZE = 620;
-const LINE_COLOR = 0x111111;
+const THEME_STORAGE_KEY = "timer-study-theme";
+const THEMES = {
+  light: {
+    background: 0xffffff,
+    line: 0x111111,
+    highlight: 0xb8b8b8,
+    monochromeMin: 0.22,
+    monochromeMax: 0.98,
+  },
+  black: {
+    background: 0x040404,
+    line: 0xf3f3ee,
+    highlight: 0xffffff,
+    monochromeMin: 0.38,
+    monochromeMax: 1,
+  },
+};
+
+function getInitialTheme() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedTheme = params.get("theme") ?? params.get("mode");
+  if (requestedTheme === "light" || requestedTheme === "black") {
+    return requestedTheme;
+  }
+
+  try {
+    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (savedTheme === "light" || savedTheme === "black") {
+      return savedTheme;
+    }
+  } catch {}
+
+  return "light";
+}
+
+function getThemePreset(themeName) {
+  return THEMES[themeName];
+}
 
 const state = {
   setMinutes: FULL_TIMER_MINUTES,
@@ -26,6 +63,7 @@ const state = {
   speedMultiplier: 60,
   view: "assembly",
   sidebarHidden: false,
+  theme: getInitialTheme(),
 };
 
 const motion = {
@@ -58,9 +96,12 @@ const ui = {
   selectedGroup: document.querySelector("#selected-group"),
   assemblyViewButton: document.querySelector("#assembly-view-button"),
   componentsViewButton: document.querySelector("#components-view-button"),
+  lightThemeButton: document.querySelector("#light-theme-button"),
+  blackThemeButton: document.querySelector("#black-theme-button"),
   assemblyView: document.querySelector("#assembly-view"),
   componentsView: document.querySelector("#components-view"),
   panelToggleButton: document.querySelector("#panel-toggle-button"),
+  themeToggleButton: document.querySelector("#theme-toggle-button"),
   catalogGrid: document.querySelector("#catalog-grid"),
   canvas: document.querySelector("#scene"),
 };
@@ -74,10 +115,10 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
 renderer.setSize(ui.canvas.clientWidth, ui.canvas.clientHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.setClearColor(0xffffff, 1);
+renderer.setClearColor(getThemePreset(state.theme).background, 1);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xffffff);
+scene.background = new THREE.Color(getThemePreset(state.theme).background);
 
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 2400);
 camera.position.set(480, -520, 420);
@@ -112,7 +153,7 @@ const animators = {};
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const pointerDown = new THREE.Vector2();
-const highlightState = new WeakMap();
+let highlightState = new WeakMap();
 const componentCards = [];
 let selectedPart = null;
 let activeComponentCard = null;
@@ -435,20 +476,28 @@ function roundedRectShape(width, height, radius) {
   return shape;
 }
 
-function monochromeColor(color) {
+function monochromeColor(color, themeName = state.theme) {
   const source = new THREE.Color(color);
   const luminance = source.r * 0.299 + source.g * 0.587 + source.b * 0.114;
-  const value = THREE.MathUtils.lerp(0.22, 0.98, luminance);
+  const theme = getThemePreset(themeName);
+  const value = THREE.MathUtils.lerp(theme.monochromeMin, theme.monochromeMax, luminance);
   return new THREE.Color(value, value, value);
+}
+
+function themedMaterialColor(color, preserveColor = false, themeName = state.theme) {
+  return preserveColor ? new THREE.Color(color) : monochromeColor(color, themeName);
 }
 
 function ringMaterial(color, extra = {}) {
   const { preserveColor = false, ...materialOptions } = extra;
-  return new THREE.MeshBasicMaterial({
-    color: preserveColor ? new THREE.Color(color) : monochromeColor(color),
+  const material = new THREE.MeshBasicMaterial({
+    color: themedMaterialColor(color, preserveColor),
     toneMapped: false,
     ...materialOptions,
   });
+  material.userData.baseColor = color;
+  material.userData.preserveColor = preserveColor;
+  return material;
 }
 
 function buildEdgeLines(geometry) {
@@ -456,12 +505,41 @@ function buildEdgeLines(geometry) {
   return new THREE.LineSegments(
     edges,
     new THREE.LineBasicMaterial({
-      color: LINE_COLOR,
+      color: getThemePreset(state.theme).line,
       transparent: true,
       opacity: 0.88,
       toneMapped: false,
     }),
   );
+}
+
+function reapplyMaterialTheme(material) {
+  if (!material?.userData || material.userData.baseColor === undefined || !("color" in material)) {
+    return;
+  }
+
+  material.color.copy(
+    themedMaterialColor(material.userData.baseColor, material.userData.preserveColor, state.theme),
+  );
+}
+
+function reapplyThemeToRoot(root) {
+  if (!root) {
+    return;
+  }
+
+  root.traverse((child) => {
+    if (child.isMesh) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        reapplyMaterialTheme(material);
+      }
+    }
+
+    if (child.userData?.isEdgeOverlay && child.material?.color) {
+      child.material.color.setHex(getThemePreset(state.theme).line);
+    }
+  });
 }
 
 function attachEdgeOverlay(mesh) {
@@ -1116,7 +1194,7 @@ function buildComponentScene(cardState) {
   }
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xffffff);
+  scene.background = new THREE.Color(getThemePreset(state.theme).background);
 
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 4000);
 
@@ -1160,7 +1238,7 @@ function getPreviewRenderer() {
     });
     previewRenderer.setPixelRatio(1);
     previewRenderer.outputColorSpace = THREE.SRGBColorSpace;
-    previewRenderer.setClearColor(0xffffff, 1);
+    previewRenderer.setClearColor(getThemePreset(state.theme).background, 1);
   }
 
   return previewRenderer;
@@ -1198,7 +1276,7 @@ function getLiveComponentRenderer() {
     });
     liveComponentRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     liveComponentRenderer.outputColorSpace = THREE.SRGBColorSpace;
-    liveComponentRenderer.setClearColor(0xffffff, 1);
+    liveComponentRenderer.setClearColor(getThemePreset(state.theme).background, 1);
   }
 
   return liveComponentRenderer;
@@ -1331,6 +1409,8 @@ function setHighlight(root, highlighted) {
     return;
   }
 
+  const highlightColor = new THREE.Color(getThemePreset(state.theme).highlight);
+
   visitMaterials(root, (material) => {
     if (!highlightState.has(material)) {
       highlightState.set(material, {
@@ -1342,7 +1422,7 @@ function setHighlight(root, highlighted) {
     const original = highlightState.get(material);
     if ("color" in material && original.color) {
       if (highlighted) {
-        material.color.copy(original.color).lerp(new THREE.Color(0xb8b8b8), 0.38);
+        material.color.copy(original.color).lerp(highlightColor, 0.38);
       } else {
         material.color.copy(original.color);
       }
@@ -1426,6 +1506,77 @@ function syncUi() {
   ui.statusOutput.textContent = state.running ? "Running" : "Ready";
 }
 
+function applyTheme() {
+  const theme = getThemePreset(state.theme);
+  document.documentElement.dataset.theme = state.theme;
+  ui.lightThemeButton.classList.toggle("mode-button--active", state.theme === "light");
+  ui.blackThemeButton.classList.toggle("mode-button--active", state.theme === "black");
+  ui.themeToggleButton.textContent = state.theme === "light" ? "Black" : "Light";
+  ui.themeToggleButton.setAttribute(
+    "aria-label",
+    state.theme === "light" ? "Switch to black theme" : "Switch to light theme",
+  );
+
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, state.theme);
+  } catch {}
+
+  if (selectedPart) {
+    setHighlight(selectedPart, false);
+  }
+  highlightState = new WeakMap();
+
+  renderer.setClearColor(theme.background, 1);
+  scene.background = new THREE.Color(theme.background);
+  floorShadow.material.color.setHex(theme.background);
+  reapplyThemeToRoot(clockRoot);
+
+  for (const cardState of componentCards) {
+    if (cardState.scene) {
+      cardState.scene.background = new THREE.Color(theme.background);
+    }
+    if (cardState.object) {
+      reapplyThemeToRoot(cardState.object);
+    }
+    cardState.previewReady = false;
+    if (cardState.preview) {
+      cardState.preview.removeAttribute("src");
+      cardState.preview.style.opacity = activeComponentCard === cardState ? "0" : "1";
+    }
+  }
+
+  if (previewRenderer) {
+    previewRenderer.setClearColor(theme.background, 1);
+  }
+  if (liveComponentRenderer) {
+    liveComponentRenderer.setClearColor(theme.background, 1);
+  }
+
+  if (selectedPart) {
+    setHighlight(selectedPart, true);
+  }
+
+  if (state.view === "components") {
+    for (const cardState of componentCards) {
+      ensureComponentPreview(cardState);
+    }
+    if (activeComponentCard) {
+      const renderer = getLiveComponentRenderer();
+      syncComponentCardCamera(activeComponentCard);
+      renderer.render(activeComponentCard.scene, activeComponentCard.camera);
+    }
+  }
+}
+
+function setTheme(themeName) {
+  if (!(themeName in THEMES) || state.theme === themeName) {
+    return;
+  }
+
+  state.theme = themeName;
+  applyTheme();
+}
+
 function setView(view) {
   state.view = view;
   const showingAssembly = view === "assembly";
@@ -1494,6 +1645,18 @@ ui.assemblyViewButton.addEventListener("click", () => {
 
 ui.componentsViewButton.addEventListener("click", () => {
   setView("components");
+});
+
+ui.lightThemeButton.addEventListener("click", () => {
+  setTheme("light");
+});
+
+ui.blackThemeButton.addEventListener("click", () => {
+  setTheme("black");
+});
+
+ui.themeToggleButton.addEventListener("click", () => {
+  setTheme(state.theme === "light" ? "black" : "light");
 });
 
 ui.panelToggleButton.addEventListener("click", () => {
@@ -1602,6 +1765,7 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 initializeComponentCatalog();
+applyTheme();
 setView(state.view);
 setSidebarHidden(state.sidebarHidden);
 syncUi();

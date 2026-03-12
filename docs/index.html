@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Timer Study</title>
-    <script type="module" crossorigin src="./assets/index-BusKoBGv.js"></script>
+    <script type="module" crossorigin src="./assets/index-CBGKPz8u.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/three-Dt55QMta.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-DRyYbCnG.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-Bsl-3JIY.css">
   </head>
   <body>
     <div id="app">
@@ -17,6 +17,15 @@
           </button>
           <button id="components-view-button" class="mode-button" type="button">
             Components
+          </button>
+        </section>
+
+        <section class="theme-switch" aria-label="Theme switch">
+          <button id="light-theme-button" class="mode-button mode-button--active" type="button">
+            Light
+          </button>
+          <button id="black-theme-button" class="mode-button" type="button">
+            Black
           </button>
         </section>
 
@@ -86,6 +95,14 @@
           aria-label="Hide side panel"
         >
           &lsaquo;
+        </button>
+        <button
+          id="theme-toggle-button"
+          class="theme-toggle-button"
+          type="button"
+          aria-label="Switch to black theme"
+        >
+          Black
         </button>
         <section id="assembly-view" class="stage-view">
           <canvas id="scene"></canvas>

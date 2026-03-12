@@ -18,6 +18,15 @@
           </button>
         </section>
 
+        <section class="theme-switch" aria-label="Theme switch">
+          <button id="light-theme-button" class="mode-button mode-button--active" type="button">
+            Light
+          </button>
+          <button id="black-theme-button" class="mode-button" type="button">
+            Black
+          </button>
+        </section>
+
         <section class="control">
           <div class="control__head">
             <label for="timer-range">Timer Setting</label>
@@ -84,6 +93,14 @@
           aria-label="Hide side panel"
         >
           &lsaquo;
+        </button>
+        <button
+          id="theme-toggle-button"
+          class="theme-toggle-button"
+          type="button"
+          aria-label="Switch to black theme"
+        >
+          Black
         </button>
         <section id="assembly-view" class="stage-view">
           <canvas id="scene"></canvas>

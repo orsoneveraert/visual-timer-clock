@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timer Study</title>
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <aside class="panel">
+        <section class="view-switch" aria-label="View switch">
+          <button id="assembly-view-button" class="mode-button mode-button--active" type="button">
+            Assembly
+          </button>
+          <button id="components-view-button" class="mode-button" type="button">
+            Components
+          </button>
+        </section>
+
+        <section class="control">
+          <div class="control__head">
+            <label for="timer-range">Timer Setting</label>
+            <output id="timer-setting-output" for="timer-range">60 min</output>
+          </div>
+          <input id="timer-range" type="range" min="0" max="60" step="1" value="60" />
+        </section>
+
+        <section class="control">
+          <div class="control__head">
+            <label for="explode-range">Exploded Length</label>
+            <output id="explode-output" for="explode-range">0%</output>
+          </div>
+          <input id="explode-range" type="range" min="0" max="500" step="1" value="0" />
+        </section>
+
+        <section class="control">
+          <div class="control__head">
+            <label for="speed-range">Playback Speed</label>
+            <output id="speed-output" for="speed-range">60x</output>
+          </div>
+          <input id="speed-range" type="range" min="1" max="240" step="1" value="60" />
+        </section>
+
+        <section class="readouts">
+          <div class="readout">
+            <span class="readout__label">Remaining</span>
+            <strong id="remaining-output">60:00</strong>
+          </div>
+          <div class="readout">
+            <span class="readout__label">Status</span>
+            <strong id="status-output">Ready</strong>
+          </div>
+        </section>
+
+        <section class="actions">
+          <button id="start-button" class="button button--primary" type="button">Start</button>
+          <button id="pause-button" class="button" type="button">Pause</button>
+          <button id="reset-button" class="button" type="button">Reset</button>
+        </section>
+
+        <section class="inspector">
+          <p class="eyebrow">Part Inspector</p>
+          <h2 id="selected-name" class="inspector__name">No part selected</h2>
+          <p id="selected-role" class="inspector__role">
+            Click a visible piece in the 3D assembly to highlight it and inspect its role.
+          </p>
+          <p id="selected-group" class="inspector__group">Selection: none</p>
+        </section>
+
+        <section class="legend">
+          <div class="legend__row"><span class="swatch swatch--lens"></span> Lens / bezel / mask</div>
+          <div class="legend__row"><span class="swatch swatch--disk"></span> Red visual timer disk</div>
+          <div class="legend__row"><span class="swatch swatch--mechanism"></span> Mechanism and chassis</div>
+          <div class="legend__row"><span class="swatch swatch--pcb"></span> Electronics and power</div>
+        </section>
+      </aside>
+
+      <main class="viewer">
+        <button
+          id="panel-toggle-button"
+          class="panel-toggle-button"
+          type="button"
+          aria-label="Hide side panel"
+        >
+          &lsaquo;
+        </button>
+        <section id="assembly-view" class="stage-view">
+          <canvas id="scene"></canvas>
+        </section>
+
+        <section id="components-view" class="catalog-view" hidden>
+          <div id="catalog-grid" class="catalog-grid" aria-label="Component catalog"></div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
